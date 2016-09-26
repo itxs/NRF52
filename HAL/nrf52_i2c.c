@@ -99,16 +99,20 @@ void I2C_StartTransfer(I2C_HandleTypeDef* hi2c, uint8_t address, uint8_t xfer_si
 	{
 		hi2c->Instance->SHORTS = 0;
 		hi2c->Instance->TASKS_STARTTX = 1;
+		hi2c->Instance->TASKS_SUSPEND = 1;
+		while(hi2c->State != I2C_STATE_SUSPENDED);
+		hi2c->Instance->TASKS_RESUME = 1;
 	}
 	else
 	{
 		hi2c->Instance->ADDRESS |= 0x80;
 		hi2c->Instance->SHORTS = (xfer_size == 1) ? TWI_SHORTS_BB_STOP_Msk : TWI_SHORTS_BB_SUSPEND_Msk;
+		hi2c->Instance->TASKS_SUSPEND = 1;
+		while(hi2c->State != I2C_STATE_SUSPENDED);
+		hi2c->Instance->TASKS_RESUME = 1;
 		hi2c->Instance->TASKS_STARTRX = 1;
 	}
-	hi2c->Instance->TASKS_SUSPEND = 1;
-	while(hi2c->State != I2C_STATE_SUSPENDED);
-	hi2c->Instance->TASKS_RESUME = 1;
+
 }
 
 void I2C_StopTransfer(I2C_HandleTypeDef* hi2c)
@@ -198,6 +202,7 @@ void I2C_IRQHandler(I2C_HandleTypeDef* hi2c)
 {
 	if (hi2c->Instance->EVENTS_ERROR)
 	{
+		LOG_ERROR("I2C Error: %d", k);
 		hi2c->Instance->EVENTS_ERROR = 0;
 	}
 	if (hi2c->Instance->EVENTS_STOPPED)
